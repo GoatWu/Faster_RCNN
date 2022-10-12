@@ -1,0 +1,7 @@
+*.tar
+.idea/*
+VOCdevkit/*
+test_images/*
+__pycache__/*
+train.txt
+val.txt

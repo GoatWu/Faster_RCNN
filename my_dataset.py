@@ -115,6 +115,16 @@ class VOCDataSet(Dataset):
         return {xml.tag: result}
 
     @staticmethod
+    def collate_fn(batch):
+        """
+        Args:
+            batch: 为一个列表，其中每个元素是一个元组，即 (image, target)
+        Returns:
+            解包后再用 zip 打包，得到两个元组，分别是 image 打包和 target 打包，再组合为元组
+        """
+        return tuple(zip(*batch))
+
+    @staticmethod
     def display_time():
         print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())), end='\t\t')
 

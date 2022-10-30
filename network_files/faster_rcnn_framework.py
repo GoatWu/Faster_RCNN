@@ -1,5 +1,4 @@
-import warnings
-from typing import Tuple, List, Dict, Optional, Union
+from typing import Tuple, List, Dict, Optional
 from collections import OrderedDict
 import torch
 from torch import nn, Tensor
@@ -158,7 +157,7 @@ class FasterRCNN(FasterRCNNBase):
             image_std = [0.229, 0.224, 0.225]
         # 对数据进行标准化，缩放，打包成batch等处理部分
         transform = GeneralizedRCNNTransform(min_size, max_size, image_mean, image_std)
-        # super(FasterRCNN, self).__init__(backbone, rpn, roi_heads, transform)
+        super(FasterRCNN, self).__init__(backbone, rpn, roi_heads, transform)
 
 
 class TwoMLPHead(nn.Module):
@@ -167,6 +166,7 @@ class TwoMLPHead(nn.Module):
         :param in_channels: 输入通道数
         :param representation_size: 中间层和输出层的通道数
         """
+        super(TwoMLPHead, self).__init__()
         self.fc6 = nn.Linear(in_channels, representation_size)
         self.fc7 = nn.Linear(representation_size, representation_size)
 

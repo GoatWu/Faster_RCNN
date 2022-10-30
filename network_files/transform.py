@@ -146,6 +146,13 @@ class GeneralizedRCNNTransform(nn.Module):
     @staticmethod
     def resize_boxes(boxes, original_size, new_size):
         # type: (Tensor, List[int], List[int]) -> Tensor
+        """
+        将图像中的框从 original_size 缩放至 new_size
+        :param boxes: 需要缩放的框，Tensor.shape(N, 4)
+        :param original_size: List[Tensor.shape(2, )], len() = N
+        :param new_size: : List[Tensor.shape(2, )], len() = N
+        :return: 缩放后的boxes
+        """
         ratios = [
             torch.tensor(s, dtype=torch.float32, device=boxes.device) /
             torch.tensor(s_orig, dtype=torch.float32, device=boxes.device)

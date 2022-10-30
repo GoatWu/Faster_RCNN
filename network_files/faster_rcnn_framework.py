@@ -1,12 +1,13 @@
 import warnings
 from typing import Tuple, List, Dict, Optional, Union
-from collections import  OrderedDict
+from collections import OrderedDict
 import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
 from torchvision.ops import MultiScaleRoIAlign
 from .transform import GeneralizedRCNNTransform
 from .rpn_function import AnchorsGenerator, RPNHead, RegionProposalNetwork
+from .roi_head import RoIHeads
 
 
 class FasterRCNNBase(nn.Module):
@@ -62,15 +63,15 @@ class FasterRCNNBase(nn.Module):
 class FasterRCNN(FasterRCNNBase):
 
     def __init__(self, backbone, num_classes=None,
-                 min_size=600, max_size=1333,       # 预处理resize时限制的最小尺寸与最大尺寸
-                 image_mean=None, image_std=None,   # 预处理normalize时使用的均值和方差
+                 min_size=600, max_size=1333,  # 预处理resize时限制的最小尺寸与最大尺寸
+                 image_mean=None, image_std=None,  # 预处理normalize时使用的均值和方差
                  rpn_anchor_generator=None, rpn_head=None,
                  # 带有RPN的网络有多个预测特征层，每层在nms前保留2000个，通过nms后总共保留2000个
-                 rpn_pre_nms_top_n_train=2000, rpn_pre_nms_top_n_test=1000, # rpn在nms处理前保留的proposal数（根据score）
+                 rpn_pre_nms_top_n_train=2000, rpn_pre_nms_top_n_test=1000,  # rpn在nms处理前保留的proposal数（根据score）
                  rpn_post_nms_top_n_train=2000, rpn_post_nms_top_n_test=1000,  # rpn中在nms处理后保留的proposal数
-                 rpn_nms_thresh=0.7,    # rpn中进行nms处理时的iou阈值
+                 rpn_nms_thresh=0.7,  # rpn中进行nms处理时的iou阈值
                  rpn_fg_iou_thresh=0.7, rpn_bg_iou_thresh=0.3,  # 存在与Truth大于0.7的即为正样本，全部小于0.3的即为负样本
-                 rpn_batch_size_per_image=256, rpn_positive_fraction=0.5, # 每张图采样anchor数，其中正样本的比例
+                 rpn_batch_size_per_image=256, rpn_positive_fraction=0.5,  # 每张图采样anchor数，其中正样本的比例
                  rpn_score_thresh=0.0,
                  box_roi_pool=None, box_head=None, box_predictor=None,
                  # 移除低概率目标       faster rcnn中进行nms处理的阈值  对预测结果根据score排序取前100
@@ -125,31 +126,31 @@ class FasterRCNN(FasterRCNNBase):
             box_roi_pool = MultiScaleRoIAlign(
                 featmap_names=['0', '1', '2', '3'],  # 在哪些特征层上进行roi pooling
                 output_size=[7, 7],  # 输出的特征图尺寸
-                sampling_ratio=2     # 采样率
+                sampling_ratio=2  # 采样率
             )
         # faster rcnn中roi pooling后，展平处理两个MLP部分
         if box_head is None:
             resolution = box_roi_pool.output_size[0]  # 默认为7
             representation_size = 1024
-            # box_head = TwoMLPHead(
-            #     out_channels * resolution ** 2,
-            #     representation_size
-            # )
+            box_head = TwoMLPHead(
+                out_channels * resolution ** 2,
+                representation_size
+            )
         # 在box_head输出上预测得分
         if box_predictor is None:
             representation_size = 1024
-            # box_predictor = FastRCNNPredictor(
-            #     representation_size,
-            #     num_classes
-            # )
+            box_predictor = FastRCNNPredictor(
+                representation_size,
+                num_classes
+            )
         # 将上面几个部分结合
-        # roi_heads = RoIHeads(
-        #     box_roi_pool, box_head, box_predictor,
-        #     box_fg_iou_thresh, box_bg_iou_thresh,
-        #     box_batch_size_per_image, box_positive_fraction,
-        #     bbox_reg_weights,
-        #     box_score_thresh, box_nms_thresh, box_detections_per_img
-        # )
+        roi_heads = RoIHeads(
+            box_roi_pool, box_head, box_predictor,
+            box_fg_iou_thresh, box_bg_iou_thresh, # 0.5  0.5
+            box_batch_size_per_image, box_positive_fraction,  # 512  0.25
+            bbox_reg_weights,
+            box_score_thresh, box_nms_thresh, box_detections_per_img  # 0.05 0.5 100
+        )
 
         if image_mean is None:
             image_mean = [0.485, 0.456, 0.406]
@@ -160,3 +161,37 @@ class FasterRCNN(FasterRCNNBase):
         # super(FasterRCNN, self).__init__(backbone, rpn, roi_heads, transform)
 
 
+class TwoMLPHead(nn.Module):
+    def __init__(self, in_channels, representation_size):
+        """
+        :param in_channels: 输入通道数
+        :param representation_size: 中间层和输出层的通道数
+        """
+        self.fc6 = nn.Linear(in_channels, representation_size)
+        self.fc7 = nn.Linear(representation_size, representation_size)
+
+    def forward(self, x):
+        # x: (batch_size*num_proposals, channels, H, W)
+        # num_proposals为每张图片选取的proposals数，
+        # channels为backbone/roi_pooling的输出通道数
+        # H 和 W 为 ROI_Pooling 输出的特征图高宽，一般为 7x7
+        # in_channels = num_proposals * channels * H * W
+        x = x.flatten(start_dim=1)
+        x = F.relu(self.fc6(x))
+        x = F.relu(self.fc7(x))
+        return x
+
+
+class FastRCNNPredictor(nn.Module):
+    def __init__(self, in_channels, num_classes):
+        super(FastRCNNPredictor, self).__init__()
+        self.cls_score = nn.Linear(in_channels, num_classes)
+        self.bbox_pred = nn.Linear(in_channels, num_classes * 4)
+
+    def forward(self, x):
+        # x: (batch_size*num_proposals, representation_size)
+        # representation_size 为 TwoMLPHead 的输出 channel 数。
+        x = x.flatten(start_dim=1)  # 不起作用
+        scores = self.cls_score(x)
+        bbox_deltas = self.bbox_pred(x)
+        return scores, bbox_deltas

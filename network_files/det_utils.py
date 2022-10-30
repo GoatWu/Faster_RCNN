@@ -77,9 +77,9 @@ class BoxCoder:
         """
         将每个batch生成的锚框和回归出来的偏移量进行合并。设batch_size为N:
         tot_num_anchors_image = sum(w * h * anchors_per_pos) for every feature maps
-        :param rel_codes: 回归参数。shape: (N * tot_num_anchors_image, 4)
-        :param boxes: 生成的bbox。shape: [(tot_num_anchors_level, 4)] * N
-        :return:
+        :param rel_codes: 回归参数。shape: (N * tot_num_anchors_image, 4*num_classes)
+        :param boxes: 生成的bbox。shape: [(tot_num_anchors_level, 4*num_classes)] * N
+        :return: (N * tot_num_anchors_image, num_classes, 4)
         """
         concat_boxes = torch.cat(boxes, dim=0)  # (N * tot_num_anchors_level, 4)
         box_sum = concat_boxes.shape[0]

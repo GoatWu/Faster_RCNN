@@ -31,7 +31,7 @@ class RoIHeads(nn.Module):
             bbox_reg_weights = (10., 10., 5., 5.)
         self.box_coder = det_utils.BoxCoder(bbox_reg_weights)
         self.box_roi_pool = box_roi_pool
-        self.head = box_head
+        self.box_head = box_head
         self.box_predictor = box_predictor
         self.score_thresh = score_thresh
         self.nms_thresh = nms_thresh
@@ -263,7 +263,7 @@ class RoIHeads(nn.Module):
         # box_features_shape: [num_proposals_batch, channel, height, width]
         box_features = self.box_roi_pool(features, proposals, image_shapes)
         # box_features_shape: [num_proposals_batch, representation_size]
-        box_features = self.head(box_features)
+        box_features = self.box_head(box_features)
         class_logits, box_regression = self.box_predictor(box_features)
         result = torch.jit.annotate(List[Dict[str, torch.Tensor]], [])
         losses = {}

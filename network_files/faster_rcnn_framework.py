@@ -106,7 +106,7 @@ class FasterRCNN(FasterRCNNBase):
             )
         if rpn_head is None:
             rpn_head = RPNHead(
-                out_channels, rpn_anchor_generator.num_anchors_per_localtion()[0]
+                out_channels, rpn_anchor_generator.num_anchors_per_location()[0]
             )
 
         rpn_pre_nms_top_n = dict(training=rpn_pre_nms_top_n_test,

@@ -5,3 +5,4 @@ test_images/*
 __pycache__/*
 train.txt
 val.txt
+weights/*

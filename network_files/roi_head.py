@@ -243,8 +243,9 @@ class RoIHeads(nn.Module):
     def forward(self, features, proposals, image_shapes, targets=None):
         # type: (Dict[str, Tensor], List[Tensor], List[Tuple[int, int]], Optional[List[Dict[str, Tensor]]]) -> Tuple[List[Dict[str, Tensor]], Dict[str, Tensor]]
         """
-        :param features: Dict[str, Tensor]，图像通过backbone后得到的
-        :param proposals: List[Tensor[N, 4]]，RPN生成的proposals
+        :param features: Dict[str, Tensor]，图像通过backbone后得到的。
+                         其中 Tensor 是以 (batch_size, C, H, W) 形式给出的。
+        :param proposals: List[Tensor[N, 4]]，RPN生成的proposals，每张图片的proposals为一个元素。
         :param image_shapes: List[Tuple[H, W]]，记录输入图片缩放前的原始尺寸
         :param targets: List[Dict]，图像的标注信息
         :return:

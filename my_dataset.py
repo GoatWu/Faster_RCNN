@@ -40,7 +40,7 @@ class VOCDataSet(Dataset):
         print("INFO: Finish making VOC Dataset.")
         print('**********************')
 
-        json_file = './pascal_voc_classes.json'
+        json_file = os.path.join(voc_root, 'pascal_voc_classes.json')
         assert os.path.exists(json_file), "json dict file not exist"
         with open(json_file, 'r') as f:
             self.class_dict = json.load(f)

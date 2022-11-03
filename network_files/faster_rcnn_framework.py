@@ -21,7 +21,7 @@ class FasterRCNNBase(nn.Module):
         self._has_warned = False
 
     def forward(self, images, targets=None):
-        # type: (List[Tensor], Optional[List[Dict[str, Tensor]]]) -> Tuple[Dict[str, Tensor], List[Dict[str, Tensor]]]
+        # type: (List[Tensor], Optional[List[Dict[str, Tensor]]]) -> Optional[Dict[str, Tensor], List[Dict[str, Tensor]]]
 
         if self.training and targets is None:
             raise ValueError('In training mode, targets should not be None.')

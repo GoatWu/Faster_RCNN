@@ -40,8 +40,9 @@ def main(root):
     if not os.path.exists(checkpoint_root):
         os.makedirs(checkpoint_root)
     data_transform = {
-        'train': transforms.Compose([transforms.ToTensor]),
-        'val': transforms.Compose([transforms.RandomHorizontalFlip(0.5)])
+        'train': transforms.Compose([transforms.ToTensor(),
+                                     transforms.RandomHorizontalFlip(0.5)]),
+        'val': transforms.Compose([transforms.ToTensor()])
     }
     VOC_root = root
     aspect_ratio_group_factor = 3
@@ -84,6 +85,7 @@ def main(root):
                                                   num_workers=num_workers,
                                                   collate_fn=val_dataset.collate_fn)
     model = create_model(num_classes=21)
+    model.to(device)
     scaler = torch.cuda.amp.GradScaler() if amp else None
     train_loss = []
     learning_rate = []

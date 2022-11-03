@@ -6,3 +6,4 @@ __pycache__/*
 train.txt
 val.txt
 weights/*
+__pycache__

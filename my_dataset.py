@@ -131,7 +131,7 @@ class VOCDataSet(Dataset):
 
 def test_dataset():
     import transforms
-    from draw_box_utils import draw_objs
+    from train_utils.draw_box_utils import draw_objs
     import matplotlib.pyplot as plt
     import torchvision.transforms as ts
     import random

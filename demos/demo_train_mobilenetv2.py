@@ -8,6 +8,7 @@ import transforms
 from network_files import FasterRCNN, AnchorsGenerator
 from backbone import MobileNetV2
 from my_dataset import VOCDataSet
+from train_utils import GroupedBatchSampler, create_aspect_ratio_groups
 
 
 def create_model(num_classes):
@@ -51,25 +52,23 @@ def main(root):
     if os.path.exists(os.path.join(VOC_root, 'VOCdevkit')) is False:
         raise FileNotFoundError('VOCdevkit does not exist in path: "{}".'.format(VOC_root))
     train_dataset = VOCDataSet(VOC_root, '2012', data_transform['train'], 'train.txt')
-    train_sampler = None
+    train_sampler, train_batch_sampler = None, None
     # 是否按照图片高宽比采样图片组成batch
     # 是的话能减小训练时所需GPU显存，默认使用
-    # TODO: yet not finished train_utils functions.
-    # if aspect_ratio_group_factor >= 0:
-    #     train_sampler = torch.utils.data.RandomSampler(train_dataset)
-    #     # 统计所有图像高宽比在bins区间中的位置索引
-    #     group_ids =
-    #     train_batch_sampler =
+    if aspect_ratio_group_factor >= 0:
+        train_sampler = torch.utils.data.RandomSampler(train_dataset)
+        # 统计所有图像高宽比在bins区间中的位置索引
+        group_ids = create_aspect_ratio_groups(train_dataset, k=aspect_ratio_group_factor)
+        train_batch_sampler = GroupedBatchSampler(train_sampler, group_ids, batch_size)
 
     num_workers = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 8])
     print('Using %g dataloader workers' % num_workers)
     if train_sampler:
-        pass
-        # train_data_loader = torch.utils.data.DataLoader(train_dataset,
-        #                                                 batch_sampler=train_batch_sampler,
-        #                                                 pin_memory=True,
-        #                                                 num_workers=num_workers,
-        #                                                 collate_fn=train_dataset.collate_fn)
+        train_data_loader = torch.utils.data.DataLoader(train_dataset,
+                                                        batch_sampler=train_batch_sampler,
+                                                        pin_memory=True,
+                                                        num_workers=num_workers,
+                                                        collate_fn=train_dataset.collate_fn)
     else:
         train_data_loader = torch.utils.data.DataLoader(train_dataset,
                                                         batch_size=batch_size,

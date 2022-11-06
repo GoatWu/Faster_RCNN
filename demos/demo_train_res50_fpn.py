@@ -6,6 +6,7 @@ import transforms
 from network_files import FasterRCNN, FastRCNNPredictor
 from backbone.resnet50_fpn_model import resnet50_fpn_backbone
 from my_dataset import VOCDataSet
+from train_utils import GroupedBatchSampler, create_aspect_ratio_groups
 
 
 def create_model(num_classes, load_pretrain_weights=True):
@@ -45,25 +46,23 @@ def main(args):
     if os.path.exists(os.path.join(VOC_root, 'VOCdevkit')) is False:
         raise FileNotFoundError('VOCdevkit does not exist in path: "{}".'.format(VOC_root))
     train_dataset = VOCDataSet(voc_root=VOC_root, year='2012', transforms=data_transform['train'], txt_name='train.txt')
-    train_sampler = None
+    train_sampler, train_batch_sampler = None, None
     # 是否按照图片高宽比采样图片组成batch
     # 是的话能减小训练时所需GPU显存，默认使用
-    # TODO: yet not finished train_utils functions.
-    # if aspect_ratio_group_factor >= 0:
-    #     train_sampler = torch.utils.data.RandomSampler(train_dataset)
-    #     # 统计所有图像高宽比在bins区间中的位置索引
-    #     group_ids =
-    #     train_batch_sampler =
+    if args.aspect_ratio_group_factor >= 0:
+        train_sampler = torch.utils.data.RandomSampler(train_dataset)
+        # 统计所有图像高宽比在bins区间中的位置索引
+        group_ids = create_aspect_ratio_groups(train_dataset, k=args.aspect_ratio_group_factor)
+        train_batch_sampler = GroupedBatchSampler(train_sampler, group_ids, args.batch_size)
     batch_size = args.batch_size
     num_workers = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 8])
     print('Using %g dataloader workers' % num_workers)
     if train_sampler:
-        pass
-        # train_data_loader = torch.utils.data.DataLoader(train_dataset,
-        #                                                 batch_sampler=train_batch_sampler,
-        #                                                 pin_memory=True,
-        #                                                 num_workers=num_workers,
-        #                                                 collate_fn=train_dataset.collate_fn)
+        train_data_loader = torch.utils.data.DataLoader(train_dataset,
+                                                        batch_sampler=train_batch_sampler,
+                                                        pin_memory=True,
+                                                        num_workers=num_workers,
+                                                        collate_fn=train_dataset.collate_fn)
     else:
         train_data_loader = torch.utils.data.DataLoader(train_dataset,
                                                         batch_size=batch_size,
@@ -147,7 +146,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', default=0.01, type=float,
                         help='initial learning rate, 0.02 is the default value for training '
                              'on 8 gpus and 2 images_per_gpu')
-    parser.add_argument('--momentun', default=0.9, type=float, metavar='M', help='momentum')
+    parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
     parser.add_argument('--wd', '--weight_decay', default=1e-4, type=float, metavar='W',
                         help='weight decay (default: 1e-4)', dest='weight_decay')
     parser.add_argument('--batch_size', default=8, type=int, metavar='N',
